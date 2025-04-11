@@ -1,0 +1,26 @@
+{
+  "environment": "web",
+  "format": "html",
+  "prefix": "https://storage.googleapis.com",
+  "mainga": "UA-49880327-14",
+  "updated": "2025-04-09T14:01:34Z",
+  "id": "yoga-pose-firestore-vectorsearch-python",
+  "duration": 120,
+  "title": "Codelab - Build a contextual Yoga Poses recommender app with Firestore, Vector Search, Langchain and Gemini (Python version)",
+  "authors": "Romin Irani and Alvin Prayuda Juniarta Dwiyantoro",
+  "summary": "In this codelab, you will build out an application that uses vector search to recommend Yoga poses.",
+  "source": "1N8Gn4Jykv6yAyhwoZPxeOZ4pyfclNYgcqPmLkEkIBl8",
+  "theme": "cloud",
+  "status": [],
+  "category": [
+    "cloud"
+  ],
+  "tags": [
+    "cloudrun",
+    "firestore",
+    "gemini",
+    "langchain",
+    "vertexai"
+  ],
+  "url": "yoga-pose-firestore-vectorsearch-python"
+}

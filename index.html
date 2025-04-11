@@ -1,0 +1,554 @@
+
+<!doctype html>
+
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, minimum-scale=1.0, initial-scale=1.0, user-scalable=yes">
+  <meta name="theme-color" content="#4F7DC9">
+  <meta charset="UTF-8">
+  <title>Codelab - Build a contextual Yoga Poses recommender app with Firestore, Vector Search, Langchain and Gemini (Python version)</title>
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Source+Code+Pro:400|Roboto:400,300,400italic,500,700|Roboto+Mono">
+  <link rel="stylesheet" href="//fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="codelab-elements.css">
+  <style>
+    .success {
+      color: #1e8e3e;
+    }
+    .error {
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <google-codelab-analytics gaid="UA-49880327-14" ga4id=""></google-codelab-analytics>
+  <google-codelab codelab-gaid=""
+                  codelab-ga4id=""
+                  id="yoga-pose-firestore-vectorsearch-python"
+                  title="Codelab - Build a contextual Yoga Poses recommender app with Firestore, Vector Search, Langchain and Gemini (Python version)"
+                  environment="web"
+                  feedback-link="">
+
+  <google-codelab-about duration="0">
+                    <div class="codelab-title">
+                      Codelab - Build a contextual Yoga Poses recommender app with Firestore, Vector Search, Langchain and Gemini (Python version)
+                    </div>
+                    <div class="about-card">
+                      <h2>About this codelab</h2>
+                      <p><i class="material-icons">event</i> Last updated Apr 9, 2025</p>
+                      <p><i class="material-icons">account_circle</i> Written by Romin Irani and Alvin Prayuda Juniarta Dwiyantoro</p>
+                    </div>
+  </google-codelab-about>
+    
+      <google-codelab-step label="Introduction" duration="5">
+        <p>In this codelab, you will build out an application that uses vector search to recommend Yoga poses.</p>
+<p>Through the codelab, you will employ a step by step approach as follows:</p>
+<ol type="1" start="1">
+<li>Utilize an existing Hugging Face Dataset of Yoga poses (JSON format).</li>
+<li>Enhance the dataset with an additional field description that uses Gemini to generate descriptions for each of the poses.</li>
+<li>Use Langchain to create a Document, use Firestore Langchain integration to create the collection and embeddings in Firestore.</li>
+<li>Create a composite index in Firestore to allow for Vector search.</li>
+<li>Utilize the Vector Search in a Flask Application that brings everything together as shown below:</li>
+</ol>
+<p class="image-container"><img style="width: 512.00px" src="img/25af8758d34876e4.png"></p>
+<h3 is-upgraded>What you&#39;ll do</h3>
+<ul>
+<li>Design, Build and Deploy a web application that employs Vector Search to recommend Yoga poses.</li>
+</ul>
+<h3 class="checklist" is-upgraded>What you&#39;ll learn</h3>
+<ul class="checklist">
+<li>✅ How to use Gemini to generate text content and within the context of this codelab, generate descriptions for yoga poses</li>
+<li>✅ How to use <a href="https://cloud.google.com/firestore/docs/langchain#document-loader" target="_blank">Langchain Document Loader for Firestore</a> to load records from an enhanced dataset from Hugging Face into Firestore along with Vector Embeddings</li>
+<li>✅ How to use <a href="https://cloud.google.com/firestore/docs/langchain#vector-store" target="_blank">Langchain Vector Store for Firestore</a> to search for data based on a natural language query</li>
+<li>✅ How to use Google Cloud Text to Speech API to generate Audio content</li>
+</ul>
+<h3 is-upgraded>What you&#39;ll need</h3>
+<ul>
+<li>Chrome web browser</li>
+<li>A Gmail account</li>
+<li>A Cloud Project with billing enabled</li>
+</ul>
+<p>This codelab, designed for developers of all levels (including beginners), uses Python in its sample application. However, Python knowledge isn&#39;t required for understanding the concepts presented.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Before you Begin" duration="15">
+        <h2 is-upgraded>Create a project</h2>
+<ol type="1" start="1">
+<li>In the <a href="https://console.cloud.google.com/" target="_blank">Google Cloud Console</a>, on the project selector page, select or create a Google Cloud <a href="https://cloud.google.com/resource-manager/docs/creating-managing-projects" target="_blank">project</a>.</li>
+<li>Make sure that billing is enabled for your Cloud project. Learn how to <a href="https://cloud.google.com/billing/docs/how-to/verify-billing-enabled" target="_blank">check if billing is enabled on a project</a> .</li>
+<li>You&#39;ll use <a href="https://cloud.google.com/cloud-shell/" target="_blank">Cloud Shell</a>, a command-line environment running in Google Cloud that comes preloaded with bq. Click Activate Cloud Shell at the top of the Google Cloud console.</li>
+</ol>
+<p class="image-container"><img style="width: 738.83px" src="img/61c2b67f7a44cf3b.png"></p>
+<ol type="1" start="4">
+<li>Once connected to Cloud Shell, you check that you&#39;re already authenticated and that the project is set to your project ID using the following command:</li>
+</ol>
+<pre><code>gcloud auth list</code></pre>
+<ol type="1" start="5">
+<li>Run the following command in Cloud Shell to confirm that the gcloud command knows about your project.</li>
+</ol>
+<pre><code>gcloud config list project</code></pre>
+<ol type="1" start="6">
+<li>If your project is not set, use the following command to set it:</li>
+</ol>
+<pre><code>gcloud config set project &lt;YOUR_PROJECT_ID&gt;</code></pre>
+<ol type="1" start="7">
+<li>Enable the required APIs via the command shown below. This could take a few minutes, so please be patient.</li>
+</ol>
+<pre><code>gcloud services enable firestore.googleapis.com \
+                       compute.googleapis.com \
+                       cloudresourcemanager.googleapis.com \
+                       servicenetworking.googleapis.com \
+                       run.googleapis.com \
+                       cloudbuild.googleapis.com \
+                       cloudfunctions.googleapis.com \
+                       aiplatform.googleapis.com \
+                       texttospeech.googleapis.com</code></pre>
+<p>On successful execution of the command, you should see a message similar to the one shown below:</p>
+<pre><code>Operation &#34;operations/...&#34; finished successfully.</code></pre>
+<p>The alternative to the gcloud command is through the console by searching for each product or using this <a href="https://console.cloud.google.com/apis/enableflow?apiid=firestore.googleapis.com,compute.googleapis.com,cloudresourcemanager.googleapis.com,servicenetworking.googleapis.com,run.googleapis.com,cloudbuild.googleapis.com,cloudfunctions.googleapis.com,aiplatform.googleapis.com" target="_blank">link</a>.</p>
+<p>If any API is missed, you can always enable it during the course of the implementation.</p>
+<p>Refer <a href="https://cloud.google.com/sdk/gcloud/reference/config/list" target="_blank">documentation</a> for gcloud commands and usage.</p>
+<h2 is-upgraded>Clone repository and setup environment settings</h2>
+<p>The next step is to clone the sample repository that we will be referencing in the rest of the codelab. Assuming that you are in Cloud Shell, give the following command from your home directory:</p>
+<pre><code>git clone https://github.com/rominirani/yoga-poses-recommender-python</code></pre>
+<p>To launch the editor, click Open Editor on the toolbar of the Cloud Shell window. Click on the menu bar in the top left corner and select File → Open Folder as shown below:</p>
+<p class="image-container"><img style="width: 547.50px" src="img/c39b51604bdfc967.png"></p>
+<p>Select the <code>yoga-poses-recommender-python</code> folder and you should see the folder open with the following files as shown below:</p>
+<p class="image-container"><img style="width: 378.00px" src="img/ebd705cd99f6d70b.png"></p>
+<p>We need to now set up the environment variables that we shall be using. </p>
+<p>Click on the <code>config.template.yaml</code> file and you should see the contents as shown below:</p>
+<pre><code>project_id: your-project-id
+location: us-central1
+gemini_model_name: gemini-1.5-flash-002
+embedding_model_name: text-embedding-004
+image_generation_model_name: imagen-3.0-fast-generate-002
+database: (default)
+collection: poses
+test_collection: test-poses
+top_k: &#34;3&#34;</code></pre>
+<p>Please update the values for <code>project_id</code> and <code>location</code> as per what you have selected while creating the Google Cloud Project and Firestore Database region. Ideally, we would like the values of the <code>location</code> to be the same for the Google Cloud Project and the Firestore Database, for e.g. <code>us-central1</code>.</p>
+<p>For the purpose of this codelab, we are going to go with the pre-configured values (except of course for <code>project_id</code> and <code>location</code>, which you need to set as per your configuration.</p>
+<p>The gemini_model_name can also be customised to <a href="https://ai.google.dev/gemini-api/docs/models" target="_blank">available gemini models</a>, e.g. <code>gemini-2.0-flash-001</code>. The version postfix (for example, the -001) should be included with every model respectively.</p>
+<p>Please save this file as <code>config.yaml</code>  in the same folder as the <code>config.template.yaml</code> file in your project.</p>
+<p class="image-container"><img style="width: 169.50px" src="img/7330887908e824d3.png"></p>
+<p class="image-container"><img style="width: 303.51px" src="img/6bcb981772603b9d.png"></p>
+<h3 is-upgraded>Create a Python Environment</h3>
+<p>The final step now is to create a Python environment that we shall use locally with all the Python dependencies set up for us. </p>
+<p>Take a look at the <code>pyproject.toml</code> file that contains the details for the same, the contents of which are shown below:</p>
+<pre><code>dependencies = [
+    &#34;datasets&gt;=3.2.0&#34;,
+    &#34;flask&gt;=3.1.0&#34;,
+    &#34;google-cloud-aiplatform&gt;=1.78.0&#34;,
+    &#34;google-cloud-texttospeech&gt;=2.24.0&#34;,
+    &#34;langchain-community&gt;=0.3.15&#34;,
+    &#34;langchain-core&gt;=0.3.31&#34;,
+    &#34;langchain-google-community&gt;=2.0.4&#34;,
+    &#34;langchain-google-firestore&gt;=0.5.0&#34;,
+    &#34;langchain-google-vertexai&gt;=2.0.7&#34;,
+    &#34;pydantic-settings&gt;=2.7.1&#34;,
+    &#34;pyyaml&gt;=6.0.2&#34;,
+    &#34;tenacity&gt;=9.0.0&#34;,
+]</code></pre>
+<p>These dependencies are already version locked in the <code>requirements.txt</code>. To summarize, we need to create a virtual Python environment with the Python package dependencies in <code>requirements.txt</code> to be installed in the virtual environment. </p>
+<p>To do that, go to the <code>Command Palette</code> (Ctrl+Shift+P) in Cloud Shell IDE or open the <code>Command Palette</code> from the Gear icon on bottom left and type in <code>Python: Create Environment</code>.</p>
+<p class="image-container"><img style="width: 358.00px" src="img/2e785e65830f6b18.png"><img style="width: 559.21px" src="img/f876ba959450708c.png"></p>
+<p>Follow the next few steps to select a <code>Virtual Environment(venv)</code>, <code>Python 3.x interpreter</code> and the <code>requirements.txt</code> file.</p>
+<p>Once the environment is created, we will need to activate the created environment with the following command, back in the cloud shell terminal.</p>
+<p class="image-container"><img style="width: 142.05px" src="img/84917d8c1d23e882.png"></p>
+<pre><code>source .venv/bin/activate</code></pre>
+<p>You should see (.venv) in your console. E.g. -&gt; <code>(.venv) yourusername@cloudshell:</code></p>
+<p>Great ! We are now all set to move on to the task of setting up the Firestore database.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Setup Firestore" duration="5">
+        <p><a href="https://cloud.google.com/firestore" target="_blank">Cloud Firestore</a> is a fully-managed serverless document database that we will use as a backend for our application data. Data in Cloud Firestore is structured in <strong><em>collections</em></strong> of <strong><em>documents</em></strong>.</p>
+<h2 is-upgraded>Firestore Database initialization</h2>
+<p>Visit the <a href="https://console.cloud.google.com/firestore" target="_blank">Firestore page</a> in the Cloud console.</p>
+<p>If you have not initialized a Firestore database before in the project, do create the <code>(default)</code> database by clicking on <code>Create Database</code>. During creation of the database, go with the following values:</p>
+<ul>
+<li>Firestore mode: <code>Native</code>.</li>
+<li>Select Location Type as <code>Region</code> and select the <code>us-central1</code> location for the region.</li>
+<li>For the Security Rules, go with <code>Test rules</code>.</li>
+<li>Create the Database.</li>
+</ul>
+<p class="image-container"><img style="width: 560.50px" src="img/514937f07c01ae81.png"></p>
+<p>In the next section, we will set the groundwork for creating a collection named <code>poses</code> in our default Firestore database. This collection will hold sample data (documents) or Yoga poses information, that we will then use in our application.</p>
+<aside class="special"><p>Note that this is the same Firestore you know and love if you&#39;re using Firebase. In fact, you can get to the same database instance using the Firebase console!</p>
+</aside>
+<p>This completes the section for setting up of the Firestore database.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Prepare the Yoga poses dataset" duration="15">
+        <p>Our first task is to prepare the Yoga Poses dataset that we shall be using for the application. We will start with an existing Hugging Face dataset and then enhance it with additional information.</p>
+<p>Check out the <a href="https://huggingface.co/datasets/omergoshen/yoga_poses" target="_blank">Hugging Face Dataset for Yoga Poses</a>. Note that while this codelab uses one of the datasets, you can in fact use any other dataset and follow the same techniques demonstrated to enhance the dataset.</p>
+<p class="image-container"><img style="width: 1600.00px" src="img/80e0a35bfaa8498b.png"></p>
+<p>If we go to the <code>Files and versions</code> section, we can get the JSON data file for all the poses.</p>
+<p class="image-container"><img style="width: 1600.00px" src="img/9dc5e5b8bf46edcf.png"></p>
+<p>We have downloaded the <code>yoga_poses.json</code> and provided that file to you. This file is named as <code>yoga_poses_alldata.json</code> and it&#39;s there in the <code>/data</code> folder.</p>
+<aside class="special"><p>We will demonstrate the whole processes of generating descriptions and eventually generating the embeddings on a smaller subset of a few records, so that you are familiar with the process.</p>
+</aside>
+<p>Go to the <code>data/yoga_poses.json</code> file in the Cloud Shell Editor and take a look at the list of JSON objects, where each JSON object represents a Yoga pose. We have a total of 3 records and a sample record is shown below:</p>
+<pre><code>{
+   &#34;name&#34;: &#34;Big Toe Pose&#34;,
+   &#34;sanskrit_name&#34;: &#34;Padangusthasana&#34;,
+   &#34;photo_url&#34;: &#34;https://pocketyoga.com/assets/images/full/ForwardBendBigToe.png&#34;,
+   &#34;expertise_level&#34;: &#34;Beginner&#34;,
+   &#34;pose_type&#34;: [&#34;Standing&#34;, &#34;Forward Bend&#34;]
+ }</code></pre>
+<p>Now is a great opportunity for us to introduce Gemini and how we can use the default model itself to generate a <code>description</code> field for it.</p>
+<p>In the Cloud Shell Editor, go to the <code>generate-descriptions.py</code> file. The contents of this file are shown below:</p>
+<pre><code>import json
+import time
+import logging
+import vertexai
+from langchain_google_vertexai import VertexAI
+from tenacity import retry, stop_after_attempt, wait_exponential
+from settings import get_settings
+
+settings = get_settings()
+logging.basicConfig(
+    level=logging.INFO, format=&#34;%(asctime)s - %(levelname)s - %(message)s&#34;
+)
+# Initialize Vertex AI SDK
+vertexai.init(project=settings.project_id, location=settings.location)
+logging.info(&#34;Done Initializing Vertex AI SDK&#34;)
+
+
+@retry(
+    stop=stop_after_attempt(5),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+)
+def generate_description(pose_name, sanskrit_name, expertise_level, pose_types):
+    &#34;&#34;&#34;Generates a description for a yoga pose using the Gemini API.&#34;&#34;&#34;
+
+    prompt = f&#34;&#34;&#34;
+    Generate a concise description (max 50 words) for the yoga pose: {pose_name}
+    Also known as: {sanskrit_name}
+    Expertise Level: {expertise_level}
+    Pose Type: {&#34;, &#34;.join(pose_types)}
+
+    Include key benefits and any important alignment cues.
+    &#34;&#34;&#34;
+    try:
+        model = VertexAI(model_name=settings.gemini_model_name, verbose=True)
+        response = model.invoke(prompt)
+        return response
+    except Exception as e:
+        logging.info(f&#34;Error generating description for {pose_name}: {e}&#34;)
+        return &#34;&#34;
+
+
+def add_descriptions_to_json(input_file, output_file):
+    &#34;&#34;&#34;Loads JSON data, adds descriptions, and saves the updated data.&#34;&#34;&#34;
+
+    with open(input_file, &#34;r&#34;) as f:
+        yoga_poses = json.load(f)
+
+    total_poses = len(yoga_poses)
+    processed_count = 0
+
+    for pose in yoga_poses:
+        if pose[&#34;name&#34;] != &#34; Pose&#34;:
+            start_time = time.time()  # Record start time
+            pose[&#34;description&#34;] = generate_description(
+                pose[&#34;name&#34;],
+                pose[&#34;sanskrit_name&#34;],
+                pose[&#34;expertise_level&#34;],
+                pose[&#34;pose_type&#34;],
+            )
+            end_time = time.time()  # Record end time
+
+            processed_count += 1
+            end_time = time.time()  # Record end time
+            time_taken = end_time - start_time
+            logging.info(
+                f&#34;Processed: {processed_count}/{total_poses} - {pose[&#39;name&#39;]} ({time_taken:.2f} seconds)&#34;
+            )
+
+        else:
+            pose[&#34;description&#34;] = &#34;&#34;
+            processed_count += 1
+            logging.info(
+                f&#34;Processed: {processed_count}/{total_poses} - {pose[&#39;name&#39;]} ({time_taken:.2f} seconds)&#34;
+            )
+        # Adding a delay to avoid rate limit
+        time.sleep(30)
+
+    with open(output_file, &#34;w&#34;) as f:
+        json.dump(yoga_poses, f, indent=2)
+
+
+def main():
+    # File paths
+    input_file = &#34;./data/yoga_poses.json&#34;
+    output_file = &#34;./data/yoga_poses_with_descriptions.json&#34;
+
+    # Add descriptions and save the updated JSON
+    add_descriptions_to_json(input_file, output_file)
+
+
+if __name__ == &#34;__main__&#34;:
+    main()
+</code></pre>
+<p>This application will add a new <code>description</code> field to each Yoga pose JSON record. It will obtain the description via a call to the Gemini model, where we will provide it with the necessary prompt. The field is added to the JSON file and the new file is written to <code>data/yoga_poses_with_descriptions.json</code> file.</p>
+<p>Let&#39;s go through the main steps:</p>
+<ol type="1" start="1">
+<li>In the <code>main()</code> function, you will find that it invokes the <code>add_descriptions_to_json</code> function and provides the input file and the output file expected.</li>
+<li>The <code>add_descriptions_to_json</code> function does the following for each JSON record i.e. Yoga post information:</li>
+<li>It extracts out the <code>pose_name</code>, <code>sanskrit_name</code>, <code>expertise_level</code> and <code>pose_types</code>.</li>
+<li>It invokes the generate_description function that constructs a prompt and then invokes the <a href="https://js.langchain.com/docs/integrations/llms/google_vertex_ai/" target="_blank">Langchain VertexAI</a> model class to get the response text.</li>
+<li>This response text is then added to the JSON object.</li>
+<li>The updated JSON list of objects is then written to the destination file.</li>
+</ol>
+<p>Let us run this application. </p>
+<p>In the terminal window with your recently active python <code>(.venv)</code> environment, run the following commands:</p>
+<pre><code>cd yoga-poses-recommender-python/
+python generate-descriptions.py</code></pre>
+<p>If you are asked for any authorization, please go ahead and provide that.</p>
+<p>You will find that the application starts executing. We have added a delay of 30 seconds between records to avoid any rate limit quotas that could be there on new Google Cloud accounts, so please be patient.</p>
+<p>A sample run in progress is shown below:</p>
+<p class="image-container"><img style="width: 565.19px" src="img/4c41f599689b7c32.png"></p>
+<p>Once all the 3 records have been enhanced with the Gemini call, a file <code>data/yoga_poses_with_description.json</code> will be generated. You can take a look at that.</p>
+<p>We are now ready with our data file and the next step is to understand how to populate a Firestore Database with it, along with embeddings generation.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Import Data into Firestore and generate Vector Embeddings" duration="20">
+        <p>We have the <code>data/yoga_poses_with_description.json</code> file and now need to populate the Firestore Database with it and importantly, generate the Vector Embeddings for each of the records. The Vector Embeddings will be useful later on when we have to do a similarity search on them with the user query that has been provided in natural language.</p>
+<p>We will be using the <a href="https://cloud.google.com/firestore/docs/langchain#langchain-components" target="_blank">Langchain Firestore components</a> to implement the above process.</p>
+<p>The steps to do that will be as follows:</p>
+<ol type="1" start="1">
+<li>We will convert the list of JSON objects into a list of <a href="https://python.langchain.com/api_reference/core/documents/langchain_core.documents.base.Document.html" target="_blank">Langchain Document</a> objects. Each document will have two attributes: <code>page_content</code> and <code>metadata</code>. The metadata object will contain the entire JSON object that has attributes like <code>name</code>, <code>description</code>, <code>sanskrit_name</code>, etc. The <code>page_content</code> will be a string text that will be a concatenation of a few fields.</li>
+<li>Once we have a list of <code>Document</code> objects, we will be using the <code>FirestoreVectorStore</code> Langchain class and specifically the <code>from_documents</code> method with this list of documents, a collection name (we are using the <code>TEST_COLLECTION</code> variable that points to <code>test-poses</code>), a Vertex AI Embedding class and the Firestore connection details (<code>PROJECT_ID</code> and <code>DATABASE</code> name). This will create the collection and will also generate an <code>embedding</code> field for each of the attributes.</li>
+</ol>
+<p>The code for <code>import-data.py</code> is given below (parts of the code have been truncated for brevity):</p>
+<pre><code>...
+
+def create_langchain_documents(poses):
+   &#34;&#34;&#34;Creates a list of Langchain Documents from a list of poses.&#34;&#34;&#34;
+   documents = []
+   for pose in poses:
+       # Convert the pose to a string representation for page_content
+       page_content = (
+           f&#34;name: {pose.get(&#39;name&#39;, &#39;&#39;)}\n&#34;
+           f&#34;description: {pose.get(&#39;description&#39;, &#39;&#39;)}\n&#34;
+           f&#34;sanskrit_name: {pose.get(&#39;sanskrit_name&#39;, &#39;&#39;)}\n&#34;
+           f&#34;expertise_level: {pose.get(&#39;expertise_level&#39;, &#39;N/A&#39;)}\n&#34;
+           f&#34;pose_type: {pose.get(&#39;pose_type&#39;, &#39;N/A&#39;)}\n&#34;
+       ).strip()
+       # The metadata will be the whole pose
+       metadata = pose
+
+       document = Document(page_content=page_content, metadata=metadata)
+       documents.append(document)
+   logging.info(f&#34;Created {len(documents)} Langchain documents.&#34;)
+   return documents
+
+def main():
+    all_poses = load_yoga_poses_data_from_local_file(
+        &#34;./data/yoga_poses_with_descriptions.json&#34;
+    )
+    documents = create_langchain_documents(all_poses)
+    logging.info(
+        f&#34;Successfully created langchain documents. Total documents: {len(documents)}&#34;
+    )
+
+    embedding = VertexAIEmbeddings(
+        model_name=settings.embedding_model_name,
+        project=settings.project_id,
+        location=settings.location,
+    )
+
+    client = firestore.Client(project=settings.project_id, database=settings.database)
+
+    vector_store = FirestoreVectorStore.from_documents(
+        client=client,
+        collection=settings.test_collection,
+        documents=documents,
+        embedding=embedding,
+    )
+    logging.info(&#34;Added documents to the vector store.&#34;)
+
+
+if __name__ == &#34;__main__&#34;:
+    main()
+</code></pre>
+<p>Let us run this application. In the terminal window with the active python <code>(.venv)</code> environment, run the following command inside the <code>yoga-poses-recommender-python</code> folder:</p>
+<pre><code>python import-data.py</code></pre>
+<p>If all goes well, you should see a message similar to the one below:</p>
+<pre><code>2025-01-21 14:50:06,479 - INFO - Added documents to the vector store.</code></pre>
+<p>To check if the records have been inserted successfully and the embeddings have been generated, visit the <a href="https://console.cloud.google.com/firestore" target="_blank">Firestore page</a> in the Cloud console.</p>
+<p class="image-container"><img style="width: 570.50px" src="img/1fb3dc872fc53c77.png"></p>
+<p>Click on the (default) database, this should show the <code>test-poses</code> collection and multiple documents under that collection. Each document is one Yoga pose.</p>
+<p class="image-container"><img style="width: 528.86px" src="img/5c94e5a7613fb740.png"></p>
+<p>Click on any of the documents to investigate the fields. In addition to the fields that we imported, you will also find the <code>embedding</code> field, which is a Vector field that has been generated automatically for you via the Langchain <code>VertexAIEmbeddings</code> class that we used, in which we provided the <code>text-embedding-004</code> Vertex AI Embedding model.</p>
+<p class="image-container"><img style="width: 292.00px" src="img/da74415708df94b9.png"></p>
+<p>Now that we have the records uploaded into the Firestore Database with the embeddings in place, we can move to the next step and see how to do Vector Similarity Search in Firestore.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Import full Yoga poses into Firestore Database collection" duration="10">
+        <p>We will now create the <code>poses</code> collection, which is a full list of 160 Yoga poses, for which we have generated a database import file that you can directly import. This is done to save time in the lab. The process to generate the database that contains the description and embeddings, is the same that we saw in the previous section.</p>
+<p>Import the database by following the steps given below:</p>
+<ol type="1" start="1">
+<li>Create a bucket in your project with the <code>gsutil</code> command given below. Replace the <code><PROJECT_ID></code> variable in the command below with your Google Cloud Project Id.</li>
+</ol>
+<pre><code>gsutil mb -l us-central1 gs://&lt;PROJECT_ID&gt;-my-bucket</code></pre>
+<ol type="1" start="2">
+<li>Now that the bucket is created, we need to copy the database export that we have prepared into this bucket, before we can import it into the Firebase database. Use the command given below:</li>
+</ol>
+<pre><code>gsutil cp -r gs://yoga-database-firestore-export-bucket/2025-01-27T05:11:02_62615  gs://&lt;PROJECT_ID&gt;-my-bucket</code></pre>
+<p>Now that we have the data to import, we can move to the final step of importing the data into the Firebase database <code>(default)</code> that we&#39;ve created.</p>
+<ol type="1" start="3">
+<li>Use the gcloud command given below:</li>
+</ol>
+<pre><code>gcloud firestore import gs://&lt;PROJECT_ID&gt;-my-bucket/2025-01-27T05:11:02_62615</code></pre>
+<p>The import will take a few seconds and once it&#39;s ready, you can validate your Firestore database and the collection by visiting <a href="https://console.cloud.google.com/firestore/databases" target="_blank">https://console.cloud.google.com/firestore/databases</a>, select the <code>(default)</code> database and the <code>poses</code> collection as shown below:</p>
+<p class="image-container"><img style="width: 583.47px" src="img/4aed5e06f357936c.png"></p>
+<p>This completes the creation of the Firestore collection that we will be using in our application.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Perform Vector Similarity Search in Firestore" duration="20">
+        <p>To perform <a href="https://firebase.google.com/docs/firestore/vector-search" target="_blank">Vector Similarity search</a>, we will take in the query from the user. An example of this query can be <code>"Suggest me some exercises to relieve back pain"</code>.</p>
+<p>Take a look at the <code>search-data.py</code> file. The key function to look at is the search function, which is shown below. At a high level, it creates an embedding class that shall be used to generate the embedding for the user query. It then uses the <code>FirestoreVectorStore</code> class to invoke its <code>similarity_search</code> function.</p>
+<pre><code>def search(query: str):
+    &#34;&#34;&#34;Executes Firestore Vector Similarity Search&#34;&#34;&#34;
+    embedding = VertexAIEmbeddings(
+        model_name=settings.embedding_model_name,
+        project=settings.project_id,
+        location=settings.location,
+    )
+
+    client = firestore.Client(project=settings.project_id, database=settings.database)
+
+    vector_store = FirestoreVectorStore(
+        client=client, collection=settings.collection, embedding_service=embedding
+    )
+
+    logging.info(f&#34;Now executing query: {query}&#34;)
+    results: list[Document] = vector_store.similarity_search(
+        query=query, k=int(settings.top_k), include_metadata=True
+    )
+    for result in results:
+        print(result.page_content)</code></pre>
+<h2 is-upgraded>Create Firestore composite index</h2>
+<p>Before you run this with a few query examples, you must first generate a <a href="https://firebase.google.com/docs/firestore/vector-search" target="_blank">Firestore composite index</a>, which is needed for your search queries to succeed. If you run the application without creating the index, an error indicating that you need to create the index first will be displayed with the command to create the index first.</p>
+<p>The <code>gcloud</code> command to create the composite index is shown below:</p>
+<pre><code>gcloud firestore indexes composite create --project=&lt;YOUR_PROJECT_ID&gt; --collection-group=poses --query-scope=COLLECTION --field-config=vector-config=&#39;{&#34;dimension&#34;:&#34;768&#34;,&#34;flat&#34;: &#34;{}&#34;}&#39;,field-path=embedding</code></pre>
+<p>The index will take a few minutes to complete since there are 150+ records that are present in the database. Once it is complete, you can view the index via the command shown below:</p>
+<pre><code>gcloud firestore indexes composite list</code></pre>
+<p>You should see the index that you just created in the list.</p>
+<p>Try out the following command now:</p>
+<pre><code>python search-data.py --prompt &#34;Recommend me some exercises for back pain relief&#34;</code></pre>
+<p>You should have a few recommendations provided to you. A sample run is shown below:</p>
+<pre><code>2025-01-21 15:48:51,282 - INFO - Now executing query: Recommend me some exercises for back pain relief
+name: Supine Spinal Twist Pose
+description: A gentle supine twist (Supta Matsyendrasana), great for beginners.  Releases spinal tension, improves digestion, and calms the nervous system.  Keep shoulders flat on the floor and lengthen the spine.
+
+sanskrit_name: Supta Matsyendrasana
+expertise_level: Beginner
+pose_type: [&#39;Supine&#39;, &#39;Twist&#39;]
+name: Cow Pose
+description: Cow Pose (Bitilasana) is a gentle backbend, stretching the chest, shoulders, and abdomen.  Maintain a neutral spine, lengthen the tailbone, and avoid hyperextension.  Benefits include improved posture and stress relief.
+
+sanskrit_name: Bitilasana
+expertise_level: Beginner
+pose_type: [&#39;Arm Leg Support&#39;, &#39;Back Bend&#39;]
+name: Locust I Pose
+description: Locust Pose I (Shalabhasana A) strengthens the back, glutes, and shoulders.  Lie prone, lift chest and legs simultaneously, engaging back muscles.  Keep hips grounded and gaze slightly forward.
+
+sanskrit_name: Shalabhasana A
+expertise_level: Intermediate
+pose_type: [&#39;Prone&#39;, &#39;Back Bend&#39;]</code></pre>
+<p>Once you have this working, we have now understood how to work the Firestore Vector Database to upload records, generate embeddings and do a Vector Similarity Search. We can now create a web application which will integrate the vector search into a web front-end.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="The Web Application" duration="20">
+        <p>The Python Flask web application is available in <code>main.py</code> file and the front-end HTML file is present in the <code>templates/index.html.</code></p>
+<p>It is recommended that you take a look at both the files. Start first with the <code>main.py</code> file that contains the <code>/search</code> handler, which takes the prompt that has been passed from the front-end HTML <code>index.html</code> file. This then invokes the search method, which does the Vector Similarity search that we looked at in the previous section.</p>
+<p>The response is then sent back to the <code>index.html</code> with the list of recommendations. The <code>index.html</code> then displays the recommendations as different cards.</p>
+<h2 is-upgraded>Run the application locally</h2>
+<p>In the terminal window with the active python (.venv) environment, run the following command inside the <code>yoga-poses-recommender-python</code> folder:</p>
+<pre><code>python main.py</code></pre>
+<p>A sample execution is shown below:</p>
+<pre><code>* Serving Flask app &#39;main&#39;
+ * Debug mode: on
+2025-01-21 16:02:37,473 - INFO - WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:8080
+ * Running on http://10.88.0.4:8080
+2025-01-21 16:02:37,473 - INFO - Press CTRL+C to quit
+2025-01-21 16:02:37,474 - INFO -  * Restarting with stat
+2025-01-21 16:02:41,462 - WARNING -  * Debugger is active!
+2025-01-21 16:02:41,484 - INFO -  * Debugger PIN: 440-653-555</code></pre>
+<p>Once up and running, visit the home URL of the application, by clicking the Web Preview button shown below and preview on Port 8080:</p>
+<p class="image-container"><img style="width: 293.00px" src="img/5b2bafc682dad628.png"></p>
+<p>It should show you the <code>index.html</code> file served as shown below:</p>
+<p class="image-container"><img style="width: 512.50px" src="img/529ed4f38c030db6.png"></p>
+<p>Provide a sample query (Example : <code>Provide me some exercises for back pain relief</code>) and click on the <code>Search</code> button. This should retrieve some recommendations from the database. You will also see a <code>Play Audio</code> button, which will generate an audio stream based on the description, which you can hear directly.</p>
+<p class="image-container"><img style="width: 564.72px" src="img/682d02933c59a045.png"></p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="(Optional) Deploying to Google Cloud Run" duration="10">
+        <p>Our final step will be to deploy this application to Google Cloud Run. The deployment command is shown below, ensure that before you deploy it, you replace the values for the variable (&lt;&lt;YOUR_PROJECT_ID&gt;&gt;) with the ones that are specific to your project. These are values that you will be able to retrieve from the <code>config.yaml</code> file.</p>
+<pre><code>gcloud run deploy yogaposes --source . \
+  --port=8080 \
+  --allow-unauthenticated \
+  --region=us-central1 \
+  --platform=managed  \
+  --project=&lt;&lt;YOUR_PROJECT_ID&gt;&gt; \
+  --env-vars-file=config.yaml</code></pre>
+<p>Execute the above command from the root folder of the application. You may also be asked to enable Google Cloud APIs, give your acknowledgement for various permissions, please do so.</p>
+<p>The deployment process will take about 5-7 minutes to complete, so please be patient.</p>
+<p class="image-container"><img style="width: 562.50px" src="img/20f0cd37dd5073e3.png"></p>
+<p>Once successfully deployed, the deployment output will provide the Cloud Run service URL. It will be of the form:</p>
+<pre><code>Service URL: https://yogaposes-&lt;&lt;UNIQUEID&gt;.us-central1.run.app</code></pre>
+<p>Visit that public URL and you should see the same web application deployed and running successfully.</p>
+<p class="image-container"><img style="width: 512.00px" src="img/84e1cbf29cbaeedc.png"></p>
+<p>You can also visit <a href="https://console.cloud.google.com/run" target="_blank">Cloud Run</a> from the Google Cloud console and you will see the list of services in Cloud Run. The <code>yogaposes</code> service should be one of the services (if not the only one) listed there.</p>
+<p class="image-container"><img style="width: 536.00px" src="img/6a647c2d4bfd6d71.png"></p>
+<p>You can view the details of the service like URL, configurations, logs and more by clicking on the specific service name (<code>yogaposes</code> in our case).</p>
+<p class="image-container"><img style="width: 575.50px" src="img/ffed46fb25eb8b6f.png"></p>
+<p>This completes the development and deployment of our Yoga poses recommender web application on Cloud Run.</p>
+
+
+      </google-codelab-step>
+    
+      <google-codelab-step label="Congratulations" duration="0">
+        <p>Congratulations, you&#39;ve successfully built an application that uploads a dataset to Firestore, generates the embeddings and does a Vector Similarity Search based on the users query.</p>
+<h2 is-upgraded>Reference docs</h2>
+<ul>
+<li><a href="https://firebase.google.com/docs/firestore" target="_blank">Firestore</a></li>
+<li><a href="https://firebase.google.com/docs/firestore/vector-search" target="_blank">Firestore - Search with Vector Embeddings</a></li>
+<li><a href="https://firebase.google.com/docs/firestore/query-data/indexing" target="_blank">Manage Indexes in Firestore</a></li>
+<li><a href="https://cloud.google.com/run/docs/overview/what-is-cloud-run" target="_blank">Cloud Run</a></li>
+<li><a href="https://cloud.google.com/firestore/docs/langchain#document-loader" target="_blank">Langchain Document Loader for Firestore</a></li>
+<li><a href="https://cloud.google.com/firestore/docs/langchain#vector-store" target="_blank">Langchain Vector Store for Firestore</a></li>
+</ul>
+
+
+      </google-codelab-step>
+    
+  </google-codelab>
+
+  <script src="https://storage.googleapis.com/claat-public/native-shim.js"></script>
+  <script src="https://storage.googleapis.com/claat-public/custom-elements.min.js"></script>
+  <script src="prettify.js"></script>
+  <script src="codelab-elements.js"></script>
+  <script src="//support.google.com/inapp/api.js"></script>
+
+</body>
+</html>
