@@ -520,14 +520,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
        button.addEventListener('click', async () => {
           try {
-            await navigator.clipboard.writeText(codeBlock.textContent);
-            // Change icon to 'check'
-            initialIcon.textContent = 'check';
-            // Change back to 'content_copy' after a delay
-            setTimeout(() => (initialIcon.textContent = 'content_copy'), 1500);
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              await navigator.clipboard.writeText(codeBlock.textContent);
+              // Change icon to 'check'
+              initialIcon.textContent = 'check';
+              // Change back to 'content_copy' after a delay
+              setTimeout(() => (initialIcon.textContent = 'content_copy'), 1500);
+            } else {
+              // Fallback for browsers that don't support navigator.clipboard
+              const textArea = document.createElement("textarea");
+              textArea.value = codeBlock.textContent;
+              textArea.style.position = "fixed";  //avoid scrolling to bottom of page in MS Edge.
+              document.body.appendChild(textArea);
+              textArea.focus();
+              textArea.select();
+
+              try {
+                const successful = document.execCommand('copy');
+                const msg = successful ? 'successful' : 'unsuccessful';
+                console.log('Fallback: Copying text command was ' + msg);
+                 // Change icon to 'check'
+                initialIcon.textContent = 'check';
+                // Change back to 'content_copy' after a delay
+                setTimeout(() => (initialIcon.textContent = 'content_copy'), 1500);
+              } catch (err) {
+                console.error('Fallback: Oops, unable to copy', err);
+              }
+
+              document.body.removeChild(textArea);
+            }
           } catch (err) {
-               console.error('Copy failed', err);
-             }
+            console.error('Copy failed', err);
+          }
         });
 
        
