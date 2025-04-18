@@ -143,8 +143,8 @@ gemini_live_model: gemini-2.0-flash-live-preview-04-09
 database: (default)
 collection: poses
 test_collection: test-poses
-top_k: 3 # Default number of search results
-port: 8080
+top_k: "3" # Default number of search results
+port: "8080"
 </code></pre>
 <p>Please update the values for <code>project_id</code> and <code>location</code> as per what you have selected while creating the Google Cloud Project and Firestore Database region. Ideally, we would like the values of the <code>location</code> to be the same for the Google Cloud Project and the Firestore Database, for e.g. <code>us-central1</code>.</p>
 <p>For the purpose of this codelab, we are going to go with the pre-configured values (except of course for <code>project_id</code> and <code>location</code>, which you need to set as per your configuration.</p>
